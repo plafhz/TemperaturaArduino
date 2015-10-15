@@ -11,6 +11,8 @@ import java.util.List;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 
@@ -18,9 +20,9 @@ public class SerialData extends SwingWorker<Void, String>{
     private String nombrePuerto;
     private JProgressBar sensores[];
     private JLabel sensoresLabel[];
-    private JButton boton;
     private BufferedWriter file;
     private int segundos;
+    private SerialPort puerto;
     
     public SerialData(String nombrePuerto, JProgressBar sensores[], JLabel sensoresLabel[]){
         this.nombrePuerto = nombrePuerto;
@@ -35,14 +37,10 @@ public class SerialData extends SwingWorker<Void, String>{
     public void setSegundos(int segundos){
         this.segundos = segundos;
     }
-    
-    public void setBotonInicio(JButton boton){
-        this.boton = boton;
-    }
 
     @Override
     protected Void doInBackground() throws SerialPortException, InterruptedException, IOException{        
-        SerialPort puerto = new SerialPort(nombrePuerto);
+        puerto = new SerialPort(nombrePuerto);
         puerto.openPort();
         puerto.setParams(9600, 8, 1, 0);
         Thread.sleep(2500); // Espera 2 segundos hasta que el arduino este listo
@@ -58,7 +56,6 @@ public class SerialData extends SwingWorker<Void, String>{
                 buffer = "";
             }
         }
-        puerto.closePort();
         return null;
     }
     
@@ -78,7 +75,6 @@ public class SerialData extends SwingWorker<Void, String>{
             }
         }
         for(int i = 0; i < sensores.length; i++){
-            System.out.println(valores[i]);
             sensores[i].setValue((int)Float.parseFloat(valores[i]));
             sensoresLabel[i].setText(valores[i]);
         }
@@ -86,15 +82,23 @@ public class SerialData extends SwingWorker<Void, String>{
     
     @Override
     protected void done() {
+        if(puerto != null){
+            try {
+                puerto.closePort();
+            } catch (SerialPortException ex) {
+                JOptionPane.showMessageDialog(null, "Error al cerrar el puerto.");
+            }
+        }
         for(JProgressBar barra : sensores){
             barra.setValue(0);
         }
         for(JLabel label : sensoresLabel){
             label.setText("000");
         }
-        boton.setEnabled(true);
         try {
-            file.close();
+            if(file != null){
+                file.close();
+            }
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, "Error al cerrar el archivo.");
         }
